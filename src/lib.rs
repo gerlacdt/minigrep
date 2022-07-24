@@ -1,7 +1,13 @@
-use std::{env, error::Error, fs};
+use std::{
+    env,
+    error::Error,
+    io::{stdin, Read},
+    str,
+};
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let contents = fs::read_to_string(config.filename)?;
+    let mut contents = String::new();
+    stdin().read_to_string(&mut contents)?;
 
     let results = if config.ignore_case {
         search_case_insensitive(&config.query, &contents)
@@ -19,25 +25,19 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 #[derive(Debug)]
 pub struct Config {
     pub query: String,
-    pub filename: String,
     pub ignore_case: bool,
 }
 
 impl Config {
     pub fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 2 {
+        if args.len() < 1 {
             return Err("not enough arguments");
         }
         let query = args[0].clone();
-        let filename = args[1].clone();
 
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
-        Ok(Config {
-            query,
-            filename,
-            ignore_case,
-        })
+        Ok(Config { query, ignore_case })
     }
 }
 
