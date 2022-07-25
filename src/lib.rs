@@ -29,11 +29,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 1 {
-            return Err("not enough arguments");
-        }
-        let query = args[0].clone();
+    pub fn new(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        args.next(); // fist argument is the program name, so skip it
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Did not get a query string"),
+        };
 
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
@@ -42,26 +43,18 @@ impl Config {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
     let query = query.to_lowercase();
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query))
+        .collect()
 }
 
 #[cfg(test)]
