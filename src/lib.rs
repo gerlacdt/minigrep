@@ -5,6 +5,32 @@ use std::{
     str,
 };
 
+use colored::Colorize;
+use regex::{Regex, RegexBuilder};
+
+pub fn grep(config: Config) -> Result<(), Box<dyn Error>> {
+    let lines = stdin().lines();
+
+    let re = match RegexBuilder::new(&config.query)
+        .case_insensitive(config.ignore_case)
+        .build()
+    {
+        // let re = match Regex::new(&config.query) {
+        Ok(regex) => regex,
+        Err(e) => panic!("Error parsing given regexp: {}", e),
+    };
+
+    for line in lines {
+        let l = &line.unwrap();
+        if let Some(result) = re.find(l) {
+            let found = result.as_str();
+            let line_to_print = l.replace(found, &found.red().to_string());
+            println!("{}", line_to_print);
+        }
+    }
+    Ok(())
+}
+
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut contents = String::new();
     stdin().read_to_string(&mut contents)?;

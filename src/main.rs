@@ -7,7 +7,12 @@ fn main() {
         process::exit(1);
     });
 
-    if let Err(e) = minigrep::run(config) {
+    // if let Err(e) = minigrep::run(config) {
+    //     eprintln!("Application Error: {}", e);
+    //     process::exit(1);
+    // }
+
+    if let Err(e) = minigrep::grep(config) {
         eprintln!("Application Error: {}", e);
         process::exit(1);
     }
