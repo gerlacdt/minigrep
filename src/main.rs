@@ -1,18 +1,11 @@
-use minigrep::Config;
-use std::{env, process};
+use clap::Parser;
+use minigrep::Args;
+use std::process;
 
 fn main() {
-    let config = Config::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
-        process::exit(1);
-    });
+    let args = Args::parse();
 
-    // if let Err(e) = minigrep::run(config) {
-    //     eprintln!("Application Error: {}", e);
-    //     process::exit(1);
-    // }
-
-    if let Err(e) = minigrep::grep(config) {
+    if let Err(e) = minigrep::grep(args) {
         eprintln!("Application Error: {}", e);
         process::exit(1);
     }
