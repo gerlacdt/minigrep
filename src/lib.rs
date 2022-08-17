@@ -25,25 +25,25 @@ fn create_regex(args: &Args) -> Regex {
 
 // use trait for stdin/stdout
 // https://stackoverflow.com/questions/28370126/how-can-i-test-stdin-and-stdout
-fn from_stdin(_args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
+fn from_stdin(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
     let lines = stdin().lock().lines();
-    for line in lines {
-        if let Ok(l) = line {
-            handle_line(&l, &re);
+    for line in lines.enumerate() {
+        if let (linenumber, Ok(l)) = line {
+            handle_line(&l, linenumber, &re, &args);
         }
     }
     Ok(())
 }
 
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
-    for filename in args.filenames {
+    for filename in &args.filenames {
         if args.names {
             println!("{}:", filename);
         }
         if let Ok(lines) = read_lines(filename) {
-            for line in lines {
-                if let Ok(l) = line {
-                    handle_line(&l, &re)
+            for line in lines.enumerate() {
+                if let (linenumber, Ok(l)) = line {
+                    handle_line(&l, linenumber, &re, &args)
                 }
             }
         }
@@ -62,11 +62,15 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn handle_line(line: &str, re: &Regex) {
+fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
     if let Some(result) = re.find(line) {
         let found = result.as_str();
         let line_to_print = line.replace(found, &found.red().bold().to_string());
-        println!("{}", line_to_print);
+        if args.linenumber {
+            println!("{}:{}", linenumber, line_to_print);
+        } else {
+            println!("{}", line_to_print);
+        }
     }
 }
 
@@ -81,6 +85,9 @@ pub struct Args {
 
     #[clap(long, value_parser)]
     names: bool,
+
+    #[clap(long, value_parser)]
+    linenumber: bool,
 
     #[clap(value_parser)]
     filenames: Vec<String>,
@@ -100,6 +107,7 @@ mod tests {
                 "test_files/foo.txt".to_string(),
             ],
             names: true,
+            linenumber: true,
         };
 
         let _ = grep(args);
