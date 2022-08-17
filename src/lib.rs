@@ -112,4 +112,18 @@ mod tests {
 
         let _ = grep(args);
     }
+
+    #[test]
+    fn test_correct_coloring() {
+        let args = Args {
+            insensitive: true,
+            query: "foo$".to_string(),
+            filenames: vec!["test_files/poem.txt".to_string()],
+            names: true,
+            linenumber: true,
+        };
+
+        let _ = grep(args);
+        println!("done");
+    }
 }
