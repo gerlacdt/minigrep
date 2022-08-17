@@ -37,6 +37,9 @@ fn from_stdin(_args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
 
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
     for filename in args.filenames {
+        if args.names {
+            println!("{}:", filename);
+        }
         if let Ok(lines) = read_lines(filename) {
             for line in lines {
                 if let Ok(l) = line {
@@ -44,6 +47,7 @@ fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
+        println!();
     }
     Ok(())
 }
@@ -75,6 +79,9 @@ pub struct Args {
     #[clap(short, long, value_parser)]
     query: String,
 
+    #[clap(long, value_parser)]
+    names: bool,
+
     #[clap(value_parser)]
     filenames: Vec<String>,
 }
@@ -84,7 +91,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_filenames() {
+    fn test_files_with_names() {
         let args = Args {
             insensitive: true,
             query: "foo".to_string(),
@@ -92,6 +99,7 @@ mod tests {
                 "test_files/poem.txt".to_string(),
                 "test_files/foo.txt".to_string(),
             ],
+            names: true,
         };
 
         let _ = grep(args);
