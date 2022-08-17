@@ -83,10 +83,10 @@ pub struct Args {
     #[clap(short, long, value_parser)]
     query: String,
 
-    #[clap(long, value_parser)]
+    #[clap(short = 'H', value_parser)]
     names: bool,
 
-    #[clap(long, value_parser)]
+    #[clap(short = 'n', value_parser)]
     linenumber: bool,
 
     #[clap(value_parser)]
