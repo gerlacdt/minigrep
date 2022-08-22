@@ -47,7 +47,7 @@ fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-        println!();
+        println!(); // newline delimiter for every file
     }
     Ok(())
 }
