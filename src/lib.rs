@@ -38,7 +38,7 @@ fn from_stdin(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
     for filename in &args.filenames {
         if args.names {
-            println!("{}:", filename);
+            println!("{}", filename.purple());
         }
         if let Ok(lines) = read_lines(filename) {
             for line in lines.enumerate() {
