@@ -96,21 +96,27 @@ fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
 #[derive(clap::Parser, Debug)]
 #[clap(name = "minigrep")]
 pub struct Args {
+    /// enable case insensitive search
     #[clap(short, long, value_parser)]
     insensitive: bool,
 
+    /// regex to search for
     #[clap(short, long, value_parser)]
     query: String,
 
-    #[clap(short = 'H', value_parser)]
+    /// enable showing filenames
+    #[clap(short = 'H', long = "with-filenames", value_parser)]
     names: bool,
 
+    /// enable show linenumbers
     #[clap(short = 'n', value_parser)]
     linenumber: bool,
 
-    #[clap(short = 'c', value_parser)]
+    /// enable highlighting a match
+    #[clap(short = 'c', long, value_parser)]
     color: bool,
 
+    /// list of filenames to search in
     #[clap(value_parser)]
     filenames: Vec<String>,
 }
