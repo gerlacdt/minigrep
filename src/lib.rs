@@ -63,14 +63,29 @@ where
 }
 
 fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
-    if let Some(result) = re.find(line) {
-        let found = result.as_str();
-        let line_to_print = line.replace(found, &found.red().bold().to_string());
-        if args.linenumber {
-            println!("{}:{}", linenumber, line_to_print);
-        } else {
-            println!("{}", line_to_print);
+    let matches = re.find_iter(line);
+    let mut offset = 0;
+    let mut found = false;
+    for (i, m) in matches.enumerate() {
+        found = true; // marker that we have a match in this line
+
+        // print all before match
+        if i == 0 && args.linenumber {
+            print!("{}:", linenumber);
         }
+        print!("{}", &line[offset..m.start()]);
+
+        // print match
+        print!("{}", m.as_str().bold().red());
+
+        // advance position to after match
+        offset = m.end();
+    }
+
+    // only print line if there was a match
+    if found {
+        // print all after last match
+        println!("{}", &line[offset..]);
     }
 }
 
@@ -114,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn test_correct_coloring() {
+    fn test_correct_coloring_ending() {
         let args = Args {
             insensitive: true,
             query: "foo$".to_string(),
@@ -125,5 +140,31 @@ mod tests {
 
         let _ = grep(args);
         println!("done");
+    }
+
+    #[test]
+    fn test_correct_coloring_start() {
+        let args = Args {
+            insensitive: true,
+            query: "^foo".to_string(),
+            filenames: vec!["test_files/poem.txt".to_string()],
+            names: true,
+            linenumber: true,
+        };
+
+        let _ = grep(args);
+        println!("done");
+    }
+
+    #[test]
+    fn test_string_build() {
+        let s = "foobarbaz";
+
+        print!("{}", &s[0..0]);
+        print!("{}", &s[0..3].bold().blue());
+        print!("{}", &s[3..6]);
+        print!("{}", &s[6..9].bold().green());
+
+        println!();
     }
 }
