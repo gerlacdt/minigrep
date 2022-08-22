@@ -186,18 +186,5 @@ mod tests {
         };
 
         let _ = grep(args);
-        println!("done");
-    }
-
-    #[test]
-    fn test_string_build() {
-        let s = "foobarbaz";
-
-        print!("{}", &s[0..0]);
-        print!("{}", &s[0..3].bold().blue());
-        print!("{}", &s[3..6]);
-        print!("{}", &s[6..9].bold().green());
-
-        println!();
     }
 }
