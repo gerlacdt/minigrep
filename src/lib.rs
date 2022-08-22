@@ -76,7 +76,11 @@ fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
         print!("{}", &line[offset..m.start()]);
 
         // print match
-        print!("{}", m.as_str().bold().red());
+        if args.color {
+            print!("{}", m.as_str().bold().red());
+        } else {
+            print!("{}", m.as_str());
+        }
 
         // advance position to after match
         offset = m.end();
@@ -104,6 +108,9 @@ pub struct Args {
     #[clap(short = 'n', value_parser)]
     linenumber: bool,
 
+    #[clap(short = 'c', value_parser)]
+    color: bool,
+
     #[clap(value_parser)]
     filenames: Vec<String>,
 }
@@ -113,7 +120,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_files_with_names() {
+    fn test_files_with_names_with_color() {
         let args = Args {
             insensitive: true,
             query: "foo".to_string(),
@@ -123,6 +130,24 @@ mod tests {
             ],
             names: true,
             linenumber: true,
+            color: true,
+        };
+
+        let _ = grep(args);
+    }
+
+    #[test]
+    fn test_files_with_names_no_color() {
+        let args = Args {
+            insensitive: true,
+            query: "foo".to_string(),
+            filenames: vec![
+                "test_files/poem.txt".to_string(),
+                "test_files/foo.txt".to_string(),
+            ],
+            names: true,
+            linenumber: true,
+            color: false,
         };
 
         let _ = grep(args);
@@ -136,6 +161,7 @@ mod tests {
             filenames: vec!["test_files/poem.txt".to_string()],
             names: true,
             linenumber: true,
+            color: true,
         };
 
         let _ = grep(args);
@@ -150,6 +176,7 @@ mod tests {
             filenames: vec!["test_files/poem.txt".to_string()],
             names: true,
             linenumber: true,
+            color: true,
         };
 
         let _ = grep(args);
