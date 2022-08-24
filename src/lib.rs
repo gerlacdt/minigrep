@@ -10,7 +10,7 @@ pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
     if args.filenames.is_empty() {
         let io = Io {
             input: stdin().lock(),
-            output: stdout(),
+            output: &mut stdout(),
         };
         from_stdin(io, args, &re)?;
         return Ok(());
@@ -28,9 +28,9 @@ fn create_regex(args: &Args) -> Regex {
     }
 }
 
-struct Io<I: BufRead, O: Write> {
+struct Io<'a, I: BufRead, O: Write> {
     input: I,
-    output: O,
+    output: &'a mut O,
 }
 
 // use trait for stdin/stdout
@@ -39,14 +39,14 @@ fn from_stdin<I: BufRead, O: Write>(
     mut io: Io<I, O>,
     args: Args,
     re: &Regex,
-) -> Result<O, Box<dyn Error>> {
+) -> Result<(), Box<dyn Error>> {
     let lines = io.input.lines();
     for line in lines.enumerate() {
         if let (linenumber, Ok(l)) = line {
             handle_line(&mut io.output, &l, linenumber, &re, &args);
         }
     }
-    Ok(io.output)
+    Ok(())
 }
 
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn test_from_stream() {
         let args = Args {
-            insensitive: false,
+            insensitive: true,
             query: "foo".to_string(),
             filenames: vec![],
             names: false,
@@ -216,15 +216,48 @@ mod tests {
 
         let input = b"foo bar
 bar baz
-foo baz";
+Foo baz";
+        let mut v = Vec::new();
         let io = Io {
             input: &input[..],
-            output: Vec::new(),
+            output: &mut v,
         };
         let re = create_regex(&args);
-        let actual = from_stdin(io, args, &re).unwrap();
+        from_stdin(io, args, &re).unwrap();
 
-        let output = String::from_utf8(actual).expect("Not UTF-8");
-        println!("output: {}", output);
+        let actual = String::from_utf8(v).expect("Not UTF-8");
+        let expected = "foo bar
+Foo baz
+";
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_from_stream_end() {
+        let args = Args {
+            insensitive: true,
+            query: "foo$".to_string(),
+            filenames: vec![],
+            names: false,
+            linenumber: false,
+            color: false,
+        };
+
+        let input = b"foo bar
+bar baz
+bar baz FOO
+foo baz";
+        let mut v = Vec::new();
+        let io = Io {
+            input: &input[..],
+            output: &mut v,
+        };
+        let re = create_regex(&args);
+        from_stdin(io, args, &re).unwrap();
+
+        let actual = String::from_utf8(v).expect("Not UTF-8");
+        let expected = "bar baz FOO
+";
+        assert_eq!(expected, actual);
     }
 }
