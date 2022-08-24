@@ -12,7 +12,8 @@ pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
             input: stdin().lock(),
             output: stdout(),
         };
-        return from_stdin(io, args, &re);
+        from_stdin(io, args, &re)?;
+        return Ok(());
     }
     from_files(args, &re)
 }
@@ -38,14 +39,14 @@ fn from_stdin<I: BufRead, O: Write>(
     mut io: Io<I, O>,
     args: Args,
     re: &Regex,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<O, Box<dyn Error>> {
     let lines = io.input.lines();
     for line in lines.enumerate() {
         if let (linenumber, Ok(l)) = line {
             handle_line(&mut io.output, &l, linenumber, &re, &args);
         }
     }
-    Ok(())
+    Ok(io.output)
 }
 
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
@@ -85,15 +86,15 @@ fn handle_line<O: Write>(output: &mut O, line: &str, linenumber: usize, re: &Reg
 
         // print all before match
         if i == 0 && args.linenumber {
-            write!(output, "{}:", linenumber);
+            write!(output, "{}:", linenumber).expect("Error writing output stream");
         }
-        write!(output, "{}", &line[offset..m.start()]);
+        write!(output, "{}", &line[offset..m.start()]).expect("Error writing output stream");
 
         // print match
         if args.color {
-            write!(output, "{}", m.as_str().bold().red());
+            write!(output, "{}", m.as_str().bold().red()).expect("Error writing output stream");
         } else {
-            write!(output, "{}", m.as_str());
+            write!(output, "{}", m.as_str()).expect("Error writing output stream");
         }
 
         // advance position to after match
@@ -103,7 +104,7 @@ fn handle_line<O: Write>(output: &mut O, line: &str, linenumber: usize, re: &Reg
     // only print line if there was a match
     if found {
         // print all after last match
-        write!(output, "{}\n", &line[offset..]);
+        write!(output, "{}\n", &line[offset..]).expect("Error writing output stream");
     }
 }
 
@@ -200,5 +201,30 @@ mod tests {
         };
 
         let _ = grep(args);
+    }
+
+    #[test]
+    fn test_from_stream() {
+        let args = Args {
+            insensitive: false,
+            query: "foo".to_string(),
+            filenames: vec![],
+            names: false,
+            linenumber: false,
+            color: false,
+        };
+
+        let input = b"foo bar
+bar baz
+foo baz";
+        let io = Io {
+            input: &input[..],
+            output: Vec::new(),
+        };
+        let re = create_regex(&args);
+        let actual = from_stdin(io, args, &re).unwrap();
+
+        let output = String::from_utf8(actual).expect("Not UTF-8");
+        println!("output: {}", output);
     }
 }
