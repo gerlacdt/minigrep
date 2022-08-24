@@ -260,4 +260,33 @@ foo baz";
 ";
         assert_eq!(expected, actual);
     }
+
+    #[test]
+    fn test_from_stream_end_color() {
+        let args = Args {
+            insensitive: true,
+            query: "foo$".to_string(),
+            filenames: vec![],
+            names: false,
+            linenumber: false,
+            color: true,
+        };
+
+        let input = b"foo bar
+bar baz
+bar baz FOO
+foo baz";
+        let mut v = Vec::new();
+        let io = Io {
+            input: &input[..],
+            output: &mut v,
+        };
+        let re = create_regex(&args);
+        from_stdin(io, args, &re).unwrap();
+
+        let actual = String::from_utf8(v).expect("Not UTF-8");
+        let expected = "bar baz \u{1b}[1;31mFOO\u{1b}[0m
+";
+        assert_eq!(expected, actual);
+    }
 }
