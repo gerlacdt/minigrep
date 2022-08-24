@@ -1,14 +1,18 @@
 use colored::Colorize;
 use regex::{Regex, RegexBuilder};
 use std::fs::File;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use std::path::Path;
-use std::{error::Error, io::stdin};
+use std::{error::Error, io::stdin, io::stdout};
 
 pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
     let re = create_regex(&args);
     if args.filenames.is_empty() {
-        return from_stdin(args, &re);
+        let io = Io {
+            input: stdin().lock(),
+            output: stdout(),
+        };
+        return from_stdin(io, args, &re);
     }
     from_files(args, &re)
 }
@@ -23,19 +27,29 @@ fn create_regex(args: &Args) -> Regex {
     }
 }
 
+struct Io<I: BufRead, O: Write> {
+    input: I,
+    output: O,
+}
+
 // use trait for stdin/stdout
 // https://stackoverflow.com/questions/28370126/how-can-i-test-stdin-and-stdout
-fn from_stdin(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
-    let lines = stdin().lock().lines();
+fn from_stdin<I: BufRead, O: Write>(
+    mut io: Io<I, O>,
+    args: Args,
+    re: &Regex,
+) -> Result<(), Box<dyn Error>> {
+    let lines = io.input.lines();
     for line in lines.enumerate() {
         if let (linenumber, Ok(l)) = line {
-            handle_line(&l, linenumber, &re, &args);
+            handle_line(&mut io.output, &l, linenumber, &re, &args);
         }
     }
     Ok(())
 }
 
 fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
+    let mut output = stdout();
     for filename in &args.filenames {
         if args.names {
             println!("{}", filename.purple());
@@ -43,7 +57,7 @@ fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
         if let Ok(lines) = read_lines(filename) {
             for line in lines.enumerate() {
                 if let (linenumber, Ok(l)) = line {
-                    handle_line(&l, linenumber, &re, &args)
+                    handle_line(&mut output, &l, linenumber, &re, &args)
                 }
             }
         }
@@ -62,7 +76,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
+fn handle_line<O: Write>(output: &mut O, line: &str, linenumber: usize, re: &Regex, args: &Args) {
     let matches = re.find_iter(line);
     let mut offset = 0;
     let mut found = false;
@@ -71,15 +85,15 @@ fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
 
         // print all before match
         if i == 0 && args.linenumber {
-            print!("{}:", linenumber);
+            write!(output, "{}:", linenumber);
         }
-        print!("{}", &line[offset..m.start()]);
+        write!(output, "{}", &line[offset..m.start()]);
 
         // print match
         if args.color {
-            print!("{}", m.as_str().bold().red());
+            write!(output, "{}", m.as_str().bold().red());
         } else {
-            print!("{}", m.as_str());
+            write!(output, "{}", m.as_str());
         }
 
         // advance position to after match
@@ -89,7 +103,7 @@ fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) {
     // only print line if there was a match
     if found {
         // print all after last match
-        println!("{}", &line[offset..]);
+        write!(output, "{}\n", &line[offset..]);
     }
 }
 
