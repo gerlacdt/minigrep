@@ -141,23 +141,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_files_with_names_with_color() {
-        let args = Args {
-            insensitive: true,
-            query: "foo".to_string(),
-            filenames: vec![
-                "test_files/poem.txt".to_string(),
-                "test_files/foo.txt".to_string(),
-            ],
-            names: true,
-            linenumber: true,
-            color: true,
-        };
-
-        let _ = grep(args);
-    }
-
-    #[test]
     fn test_files_with_names_no_color() {
         let args = Args {
             insensitive: true,
@@ -174,119 +157,123 @@ mod tests {
         let _ = grep(args);
     }
 
+    struct Case<'a> {
+        testname: String,
+        input: &'a [u8],
+        query: String,
+        names: bool,
+        insensitive: bool,
+        linenumber: bool,
+        color: bool,
+        expected: String,
+    }
+
     #[test]
-    fn test_correct_coloring_ending() {
-        let args = Args {
-            insensitive: true,
+    fn test_grep() {
+        let cases = gen_cases();
+
+        for c in &cases {
+            println!("Testcase: {}", c.testname);
+            let mut v = Vec::new();
+            let io = Io {
+                input: c.input,
+                output: &mut v,
+            };
+            let args = Args {
+                insensitive: c.insensitive,
+                query: c.query.to_string(),
+                filenames: vec![],
+                names: c.names,
+                linenumber: c.linenumber,
+                color: c.color,
+            };
+            let re = create_regex(&args);
+            from_stdin(io, args, &re).unwrap();
+
+            let actual = String::from_utf8(v).expect("Not UTF-8");
+            assert_eq!(c.expected, actual, "FAILED, testcase: {}", c.testname);
+        }
+    }
+
+    fn gen_cases<'a>() -> Vec<Case<'a>> {
+        let mut v = vec![];
+        v.push(Case {
+            testname: "match_ending_case_insensitive".to_string(),
+            input: b"foo bar
+bar baz
+bar baz FOO
+foo baz",
             query: "foo$".to_string(),
-            filenames: vec!["test_files/poem.txt".to_string()],
-            names: true,
-            linenumber: true,
-            color: true,
-        };
-
-        let _ = grep(args);
-        println!("done");
-    }
-
-    #[test]
-    fn test_correct_coloring_start() {
-        let args = Args {
+            names: false,
             insensitive: true,
-            query: "^foo".to_string(),
-            filenames: vec!["test_files/poem.txt".to_string()],
-            names: true,
-            linenumber: true,
-            color: true,
-        };
-
-        let _ = grep(args);
-    }
-
-    #[test]
-    fn test_from_stream() {
-        let args = Args {
+            linenumber: false,
+            color: false,
+            expected: "bar baz FOO
+"
+            .to_string(),
+        });
+        v.push(Case {
+            testname: "match_ending_case_insensitive_with_color".to_string(),
+            input: b"foo bar
+bar baz
+bar baz FOO
+foo baz",
+            query: "foo$".to_string(),
+            names: false,
             insensitive: true,
+            linenumber: false,
+            color: true,
+            expected: "bar baz \u{1b}[1;31mFOO\u{1b}[0m
+"
+            .to_string(),
+        });
+        v.push(Case {
+            testname: "match_multiple_lines".to_string(),
+            input: b"foo bar
+bar baz
+bar baz FOO
+foo baz",
             query: "foo".to_string(),
-            filenames: vec![],
             names: false,
+            insensitive: false,
             linenumber: false,
             color: false,
-        };
-
-        let input = b"foo bar
+            expected: "foo bar
+foo baz
+"
+            .to_string(),
+        });
+        v.push(Case {
+            testname: "match_multiple_lines_with_linenumbers".to_string(),
+            input: b"foo bar
 bar baz
-Foo baz";
-        let mut v = Vec::new();
-        let io = Io {
-            input: &input[..],
-            output: &mut v,
-        };
-        let re = create_regex(&args);
-        from_stdin(io, args, &re).unwrap();
-
-        let actual = String::from_utf8(v).expect("Not UTF-8");
-        let expected = "foo bar
-Foo baz
-";
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_from_stream_end() {
-        let args = Args {
-            insensitive: true,
-            query: "foo$".to_string(),
-            filenames: vec![],
+bar baz FOO
+foo baz",
+            query: "foo".to_string(),
             names: false,
+            insensitive: false,
+            linenumber: true,
+            color: false,
+            expected: "0:foo bar
+3:foo baz
+"
+            .to_string(),
+        });
+        v.push(Case {
+            testname: "match_case_sensitive".to_string(),
+            input: b"foo bar
+bar baz
+bar baz FOO
+foo baz",
+            query: "FOO".to_string(),
+            names: false,
+            insensitive: false,
             linenumber: false,
             color: false,
-        };
-
-        let input = b"foo bar
-bar baz
-bar baz FOO
-foo baz";
-        let mut v = Vec::new();
-        let io = Io {
-            input: &input[..],
-            output: &mut v,
-        };
-        let re = create_regex(&args);
-        from_stdin(io, args, &re).unwrap();
-
-        let actual = String::from_utf8(v).expect("Not UTF-8");
-        let expected = "bar baz FOO
-";
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_from_stream_end_color() {
-        let args = Args {
-            insensitive: true,
-            query: "foo$".to_string(),
-            filenames: vec![],
-            names: false,
-            linenumber: false,
-            color: true,
-        };
-
-        let input = b"foo bar
-bar baz
-bar baz FOO
-foo baz";
-        let mut v = Vec::new();
-        let io = Io {
-            input: &input[..],
-            output: &mut v,
-        };
-        let re = create_regex(&args);
-        from_stdin(io, args, &re).unwrap();
-
-        let actual = String::from_utf8(v).expect("Not UTF-8");
-        let expected = "bar baz \u{1b}[1;31mFOO\u{1b}[0m
-";
-        assert_eq!(expected, actual);
+            expected: "bar baz FOO
+"
+            .to_string(),
+        });
+        v
     }
 }
