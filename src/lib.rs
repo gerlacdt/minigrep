@@ -10,7 +10,7 @@ pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
     if args.filenames.is_empty() {
         let io = Io {
             input: stdin().lock(),
-            output: &mut stdout(),
+            output: &mut stdout().lock(),
         };
         from_stdin(io, args, &re)?;
         return Ok(());
@@ -139,22 +139,39 @@ pub struct Args {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_fs::fixture::FileWriteStr;
 
     #[test]
-    fn test_files_with_names_no_color() {
-        let args = Args {
-            insensitive: true,
-            query: "foo".to_string(),
-            filenames: vec![
-                "test_files/poem.txt".to_string(),
-                "test_files/foo.txt".to_string(),
-            ],
-            names: true,
-            linenumber: true,
-            color: false,
-        };
+    fn test_tmp_files_with_names_no_color() -> Result<(), Box<dyn std::error::Error>> {
+        let poem = assert_fs::NamedTempFile::new("poem.txt")?;
+        poem.write_str(
+            "I'm nobody! Who are you?
+Are you nobody, too?
+Then there's a pair of us - don't tell!
+They'd banish us, you know.
+How dreary to be somebody!
+How public, like a frog
+To tell your name the livelong day
+To an admiring bog!
+",
+        )?;
 
-        let _ = grep(args);
+        if let Some(filename) = poem.to_str() {
+            let args = Args {
+                insensitive: true,
+                query: "nobody".to_string(),
+                filenames: vec![filename.to_string()],
+                names: true,
+                linenumber: true,
+                color: true,
+            };
+
+            let _ = grep(args);
+
+            return Ok(());
+        }
+
+        panic!("temp file could not be used");
     }
 
     struct Case<'a> {
