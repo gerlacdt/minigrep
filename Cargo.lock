@@ -282,6 +282,7 @@ dependencies = [
  "clap",
  "colored",
  "regex",
+ "walkdir",
 ]
 
 [[package]]

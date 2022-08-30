@@ -139,6 +139,7 @@ pub struct Args {
 mod tests {
     use super::*;
     use assert_fs::fixture::FileWriteStr;
+    use walkdir::WalkDir;
 
     #[test]
     fn test_tmp_files_with_names_no_color() -> Result<(), Box<dyn std::error::Error>> {
@@ -291,5 +292,17 @@ foo baz",
             .to_string(),
         });
         v
+    }
+
+    #[test]
+    fn test_walkdir() -> Result<(), Box<dyn std::error::Error>> {
+        let walker = WalkDir::new("target").into_iter();
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            if entry.path().is_file() {
+                println!("{}", entry.path().display());
+            }
+        }
+
+        Ok(())
     }
 }
