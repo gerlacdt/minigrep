@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Write};
 use std::path::Path;
 use std::{error::Error, io::stdin, io::stdout};
 
-pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
+pub fn grep<O: Write>(args: Args, writer: &mut O) -> Result<(), Box<dyn Error>> {
     let re = create_regex(&args);
     if args.filenames.is_empty() {
         let io = Io {
@@ -15,7 +15,7 @@ pub fn grep(args: Args) -> Result<(), Box<dyn Error>> {
         from_stdin(io, args, &re)?;
         return Ok(());
     }
-    from_files(args, &re)
+    from_files(args, &re, writer)
 }
 
 fn create_regex(args: &Args) -> Regex {
@@ -49,20 +49,19 @@ fn from_stdin<I: BufRead, O: Write>(
     Ok(())
 }
 
-fn from_files(args: Args, re: &Regex) -> Result<(), Box<dyn Error>> {
-    let mut output = stdout();
+fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Box<dyn Error>> {
     for filename in &args.filenames {
         if args.names {
-            println!("{}", filename.purple());
+            writeln!(writer, "{}", filename.purple()).expect("ERROR: could not write to STDOUT");
         }
         if let Ok(lines) = read_lines(filename) {
             for line in lines.enumerate() {
                 if let (linenumber, Ok(l)) = line {
-                    handle_line(&mut output, &l, linenumber, &re, &args)
+                    handle_line(writer, &l, linenumber, &re, &args)
                 }
             }
         }
-        println!(); // newline delimiter for every file
+        writeln!(writer, "").expect("ERROR: could not write to STDOUT "); // newline delimiter for every file
     }
     Ok(())
 }
@@ -166,7 +165,7 @@ To an admiring bog!
                 color: true,
             };
 
-            let _ = grep(args);
+            let _ = grep(args, &mut stdout().lock());
 
             return Ok(());
         }
