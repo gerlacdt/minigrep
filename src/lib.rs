@@ -37,14 +37,16 @@ struct Io<'a, I: BufRead, O: Write> {
 // use trait for stdin/stdout
 // https://stackoverflow.com/questions/28370126/how-can-i-test-stdin-and-stdout
 fn from_stdin<I: BufRead, O: Write>(
-    mut io: Io<I, O>,
+    io: Io<I, O>,
     args: Args,
     re: &Regex,
 ) -> Result<(), Box<dyn Error>> {
     let lines = io.input.lines();
     for line in lines.enumerate() {
         if let (linenumber, Ok(l)) = line {
-            handle_line(&mut io.output, &l, linenumber, &re, &args);
+            if let Some(output) = handle_line(&l, linenumber, &re, &args) {
+                write!(io.output, "{}", output).unwrap();
+            }
         }
     }
     Ok(())
@@ -68,7 +70,9 @@ fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Bo
                 if let Ok(lines) = read_lines(filename) {
                     for line in lines.enumerate() {
                         if let (linenumber, Ok(l)) = line {
-                            handle_line(writer, &l, linenumber, &re, &args)
+                            if let Some(output) = handle_line(&l, linenumber, &re, &args) {
+                                write!(writer, "{}", output).unwrap();
+                            }
                         }
                     }
                 }
@@ -86,7 +90,9 @@ fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Bo
             if let Ok(lines) = read_lines(filename) {
                 for line in lines.enumerate() {
                     if let (linenumber, Ok(l)) = line {
-                        handle_line(writer, &l, linenumber, &re, &args)
+                        if let Some(output) = handle_line(&l, linenumber, &re, &args) {
+                            write!(writer, "{}", output).unwrap();
+                        }
                     }
                 }
             }
@@ -107,24 +113,25 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn handle_line<O: Write>(output: &mut O, line: &str, linenumber: usize, re: &Regex, args: &Args) {
+fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) -> Option<String> {
     let matches = re.find_iter(line);
     let mut offset = 0;
     let mut found = false;
+    let mut result = String::new();
     for (i, m) in matches.enumerate() {
         found = true; // marker that we have a match in this line
 
         // print all before match
         if i == 0 && args.linenumber {
-            write!(output, "{}:", linenumber).expect("Error writing output stream");
+            result.push_str(&format!("{}:", linenumber));
         }
-        write!(output, "{}", &line[offset..m.start()]).expect("Error writing output stream");
+        result.push_str(&format!("{}", &line[offset..m.start()]));
 
         // print match
         if args.color {
-            write!(output, "{}", m.as_str().bold().red()).expect("Error writing output stream");
+            result.push_str(&format!("{}", m.as_str().bold().red()));
         } else {
-            write!(output, "{}", m.as_str()).expect("Error writing output stream");
+            result.push_str(&format!("{}", m.as_str()));
         }
 
         // advance position to after match
@@ -134,7 +141,10 @@ fn handle_line<O: Write>(output: &mut O, line: &str, linenumber: usize, re: &Reg
     // only print line if there was a match
     if found {
         // print all after last match
-        write!(output, "{}\n", &line[offset..]).expect("Error writing output stream");
+        result.push_str(&format!("{}\n", &line[offset..]));
+        Some(result)
+    } else {
+        None
     }
 }
 
@@ -211,7 +221,7 @@ foo foo FOO",
                 filenames: vec![dirname.to_string()],
                 names: true,
                 linenumber: false,
-                color: false,
+                color: true,
                 recursive: true,
             };
 
