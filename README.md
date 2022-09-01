@@ -27,10 +27,10 @@ target/debug/minigrep --help
 # search recursively in current directory for "foo"
 target/debug/minigrep . -r -q "foo"
 
-# same as above with color output, linenumbers, filenames and case-insensitive
+# search recursively in current directory for "foo" with color output, linenumbers, filenames and case-insensitive
 target/debug/minigrep . -r -q "foo" --color -n --with-filenames --insensitive
 
-# or with short options
+# same as above with short options
 target/debug/minigrep . -r -q "foo" -c -n -H -i
 
 # search explicitly in files
