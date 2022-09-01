@@ -54,7 +54,7 @@ fn from_stdin<I: BufRead, O: Write>(
 
 fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Box<dyn Error>> {
     if args.recursive {
-        // do recursive search for a single directory
+        // do recursive search only for a single directory
         if args.filenames.len() != 1 {
             panic!("Recursive Search only works for a single directory");
         }
@@ -63,44 +63,37 @@ fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Bo
         for entry in walker.into_iter().filter_map(|e| e.ok()) {
             if entry.path().is_file() {
                 let filename = entry.path().to_str().expect("Invalid Path or Filename");
-                if args.names {
-                    writeln!(writer, "{}", filename.purple())
-                        .expect("ERROR: could not write to STDOUT");
-                }
-                if let Ok(lines) = read_lines(filename) {
-                    for line in lines.enumerate() {
-                        if let (linenumber, Ok(l)) = line {
-                            if let Some(output) = handle_line(&l, linenumber, &re, &args) {
-                                write!(writer, "{}", output).unwrap();
-                            }
-                        }
-                    }
-                }
+                handle_file(filename, &args, &re, writer);
             }
         }
-        writeln!(writer, "").expect("ERROR: could not write to STDOUT ");
-        // newline delimiter for every file
+        writeln!(writer, "").expect("ERROR: could not write to STDOUT "); // newline delimiter for every file
     } else {
         // do search for the given list of files
         for filename in &args.filenames {
-            if args.names {
-                writeln!(writer, "{}", filename.purple())
-                    .expect("ERROR: could not write to STDOUT");
-            }
-            if let Ok(lines) = read_lines(filename) {
-                for line in lines.enumerate() {
-                    if let (linenumber, Ok(l)) = line {
-                        if let Some(output) = handle_line(&l, linenumber, &re, &args) {
-                            write!(writer, "{}", output).unwrap();
-                        }
-                    }
-                }
-            }
+            handle_file(filename, &args, &re, writer);
             writeln!(writer, "").expect("ERROR: could not write to STDOUT "); // newline delimiter for every file
         }
     }
 
     Ok(())
+}
+
+fn handle_file<O: Write>(filename: &str, args: &Args, re: &Regex, writer: &mut O) {
+    let mut found = false;
+    if let Ok(lines) = read_lines(filename) {
+        for line in lines.enumerate() {
+            if let (linenumber, Ok(l)) = line {
+                if let Some(output) = handle_line(&l, linenumber, &re, &args) {
+                    if found == false && args.names {
+                        writeln!(writer, "{}", filename.purple())
+                            .expect("ERROR: could not write to STDOUT");
+                        found = true;
+                    }
+                    write!(writer, "{}", output).unwrap();
+                }
+            }
+        }
+    }
 }
 
 // The output is wrapped in a Result to allow matching on errors
