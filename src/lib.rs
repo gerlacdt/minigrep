@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
 use std::{error::Error, io::stdin, io::stdout};
+use walkdir::WalkDir;
 
 pub fn grep<O: Write>(args: Args, writer: &mut O) -> Result<(), Box<dyn Error>> {
     let re = create_regex(&args);
@@ -50,19 +51,49 @@ fn from_stdin<I: BufRead, O: Write>(
 }
 
 fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Box<dyn Error>> {
-    for filename in &args.filenames {
-        if args.names {
-            writeln!(writer, "{}", filename.purple()).expect("ERROR: could not write to STDOUT");
+    if args.recursive {
+        // do recursive search for a single directory
+        if args.filenames.len() != 1 {
+            panic!("Recursive Search only works for a single directory");
         }
-        if let Ok(lines) = read_lines(filename) {
-            for line in lines.enumerate() {
-                if let (linenumber, Ok(l)) = line {
-                    handle_line(writer, &l, linenumber, &re, &args)
+        let dir = &args.filenames[0];
+        let walker = WalkDir::new(dir).into_iter();
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            if entry.path().is_file() {
+                let filename = entry.path().to_str().expect("Invalid Path or Filename");
+                if args.names {
+                    writeln!(writer, "{}", filename.purple())
+                        .expect("ERROR: could not write to STDOUT");
+                }
+                if let Ok(lines) = read_lines(filename) {
+                    for line in lines.enumerate() {
+                        if let (linenumber, Ok(l)) = line {
+                            handle_line(writer, &l, linenumber, &re, &args)
+                        }
+                    }
                 }
             }
         }
-        writeln!(writer, "").expect("ERROR: could not write to STDOUT "); // newline delimiter for every file
+        writeln!(writer, "").expect("ERROR: could not write to STDOUT ");
+        // newline delimiter for every file
+    } else {
+        // do search for the given list of files
+        for filename in &args.filenames {
+            if args.names {
+                writeln!(writer, "{}", filename.purple())
+                    .expect("ERROR: could not write to STDOUT");
+            }
+            if let Ok(lines) = read_lines(filename) {
+                for line in lines.enumerate() {
+                    if let (linenumber, Ok(l)) = line {
+                        handle_line(writer, &l, linenumber, &re, &args)
+                    }
+                }
+            }
+            writeln!(writer, "").expect("ERROR: could not write to STDOUT "); // newline delimiter for every file
+        }
     }
+
     Ok(())
 }
 
@@ -130,6 +161,10 @@ pub struct Args {
     #[clap(short = 'c', long, value_parser)]
     color: bool,
 
+    /// enable recursive search in directories
+    #[clap(short = 'r', long, value_parser)]
+    recursive: bool,
+
     /// list of filenames to search in
     #[clap(value_parser)]
     filenames: Vec<String>,
@@ -138,8 +173,59 @@ pub struct Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_fs::fixture::FileWriteStr;
-    use walkdir::WalkDir;
+    use assert_fs::fixture::{FileWriteStr, PathChild};
+
+    #[test]
+    fn test_tmp_dir_recursive() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = assert_fs::TempDir::new().unwrap();
+        if let Some(dirname) = dir.path().to_str() {
+            let file1 = dir.child("foo.txt");
+            let file2 = dir.child("bar.txt");
+            let file3 = dir.child("baz.txt");
+            file1
+                .write_str(
+                    "bar baz
+foo bar
+baz Foo",
+                )
+                .unwrap();
+
+            file2
+                .write_str(
+                    "bar baz
+baz bar
+foo foo FOO",
+                )
+                .unwrap();
+
+            file3
+                .write_str(
+                    "bar baz
+",
+                )
+                .unwrap();
+
+            let args = Args {
+                insensitive: true,
+                query: "foo".to_string(),
+                filenames: vec![dirname.to_string()],
+                names: true,
+                linenumber: false,
+                color: false,
+                recursive: true,
+            };
+
+            // let mut v = Vec::new();
+            // let _ = grep(args, &mut v);
+            let _ = grep(args, &mut stdout().lock());
+
+            // let actual = String::from_utf8(v).expect("Not UTF-8");
+
+            // let expected = "foo bar\nbaz Foo\nfoo foo FOO\n\n";
+            // assert_eq!(expected, actual);
+        }
+        Ok(())
+    }
 
     #[test]
     fn test_tmp_files_with_names_no_color() -> Result<(), Box<dyn std::error::Error>> {
@@ -164,6 +250,7 @@ To an admiring bog!
                 names: true,
                 linenumber: true,
                 color: true,
+                recursive: false,
             };
 
             let _ = grep(args, &mut stdout().lock());
@@ -203,6 +290,7 @@ To an admiring bog!
                 names: c.names,
                 linenumber: c.linenumber,
                 color: c.color,
+                recursive: false,
             };
             let re = create_regex(&args);
             from_stdin(io, args, &re).unwrap();
@@ -292,17 +380,5 @@ foo baz",
             .to_string(),
         });
         v
-    }
-
-    #[test]
-    fn test_walkdir() -> Result<(), Box<dyn std::error::Error>> {
-        let walker = WalkDir::new("target").into_iter();
-        for entry in walker.into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() {
-                println!("{}", entry.path().display());
-            }
-        }
-
-        Ok(())
     }
 }
