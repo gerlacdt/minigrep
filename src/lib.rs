@@ -266,37 +266,38 @@ To an admiring bog!
         expected: String,
     }
 
-    #[test]
-    fn test_grep() {
-        let cases = gen_cases();
+    macro_rules! grep_tests {
+        ($($name:ident: $value:expr,)*) => {
+            $(
+                #[test]
+                fn $name() {
+                    let c = $value;
+                    let mut v = Vec::new();
+                    let io = Io {
+                        input: c.input,
+                        output: &mut v,
+                    };
+                    let args = Args {
+                        insensitive: c.insensitive,
+                        query: c.query.to_string(),
+                        filenames: vec![],
+                        names: c.names,
+                        linenumber: c.linenumber,
+                        color: c.color,
+                        recursive: false,
+                    };
+                    let re = create_regex(&args);
+                    from_stdin(io, args, &re).unwrap();
 
-        for c in &cases {
-            println!("Testcase: {}", c.testname);
-            let mut v = Vec::new();
-            let io = Io {
-                input: c.input,
-                output: &mut v,
-            };
-            let args = Args {
-                insensitive: c.insensitive,
-                query: c.query.to_string(),
-                filenames: vec![],
-                names: c.names,
-                linenumber: c.linenumber,
-                color: c.color,
-                recursive: false,
-            };
-            let re = create_regex(&args);
-            from_stdin(io, args, &re).unwrap();
-
-            let actual = String::from_utf8(v).expect("Not UTF-8");
-            assert_eq!(c.expected, actual, "FAILED, testcase: {}", c.testname);
+                    let actual = String::from_utf8(v).expect("Not UTF-8");
+                    assert_eq!(c.expected, actual, "FAILED, testcase: {}", c.testname);
+                }
+            )*
         }
     }
 
-    fn gen_cases<'a>() -> Vec<Case<'a>> {
-        let mut v = vec![];
-        v.push(Case {
+    grep_tests! {
+        grep_match_ending_case_insensitive: Case {
             testname: "match_ending_case_insensitive".to_string(),
             input: b"foo bar
 bar baz
@@ -307,11 +308,10 @@ foo baz",
             insensitive: true,
             linenumber: false,
             color: false,
-            expected: "bar baz FOO
-"
-            .to_string(),
-        });
-        v.push(Case {
+            expected: "bar baz FOO\n"
+                .to_string(),
+        },
+        grep_match_ending_case_insensitive_with_color: Case {
             testname: "match_ending_case_insensitive_with_color".to_string(),
             input: b"foo bar
 bar baz
@@ -322,11 +322,10 @@ foo baz",
             insensitive: true,
             linenumber: false,
             color: true,
-            expected: "bar baz \u{1b}[1;31mFOO\u{1b}[0m
-"
-            .to_string(),
-        });
-        v.push(Case {
+            expected: "bar baz \u{1b}[1;31mFOO\u{1b}[0m\n"
+                .to_string(),
+        },
+        grep_match_multiple_lines: Case {
             testname: "match_multiple_lines".to_string(),
             input: b"foo bar
 bar baz
@@ -340,9 +339,24 @@ foo baz",
             expected: "foo bar
 foo baz
 "
-            .to_string(),
-        });
-        v.push(Case {
+                .to_string(),
+        },
+        grep_match_case_sensitive: Case {
+            testname: "match_case_sensitive".to_string(),
+            input: b"foo bar
+bar baz
+bar baz FOO
+foo baz",
+            query: "FOO".to_string(),
+            names: false,
+            insensitive: false,
+            linenumber: false,
+            color: false,
+            expected: "bar baz FOO\n"
+                .to_string(),
+        },
+
+        grep_match_multiple_lines_with_linenumbers: Case {
             testname: "match_multiple_lines_with_linenumbers".to_string(),
             input: b"foo bar
 bar baz
@@ -356,54 +370,8 @@ foo baz",
             expected: "1:foo bar
 4:foo baz
 "
-            .to_string(),
-        });
-        v.push(Case {
-            testname: "match_case_sensitive".to_string(),
-            input: b"foo bar
-bar baz
-bar baz FOO
-foo baz",
-            query: "FOO".to_string(),
-            names: false,
-            insensitive: false,
-            linenumber: false,
-            color: false,
-            expected: "bar baz FOO
-"
-            .to_string(),
-        });
-        v
+                .to_string(),
+        },
+
     }
-
-    // fn fib(n: i32) -> i32 {
-    //     if n == 0 {
-    //         return 0;
-    //     } else if n == 1 {
-    //         return 1;
-    //     }
-    //     fib(n - 1) + fib(n - 2)
-    // }
-
-    // macro_rules! fib_tests {
-    //     ($($name:ident: $value:expr,)*) => {
-    //         $(
-    //             #[test]
-    //             fn $name() {
-    //                 let (input, expected) = $value;
-    //                 assert_eq!(expected, fib(input));
-    //             }
-    //         )*
-    //     }
-    // }
-
-    // fib_tests! {
-    //     fib_0: (0, 0),
-    //     fib_1: (1, 1),
-    //     fib_2: (2, 1),
-    //     fib_3: (3, 2),
-    //     fib_4: (4, 3),
-    //     fib_5: (5, 5),
-    //     fib_6: (6, 8),
-    // }
 }
