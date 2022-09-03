@@ -2,7 +2,6 @@ use colored::Colorize;
 use regex::{Regex, RegexBuilder};
 use std::fs::File;
 use std::io::{self, BufRead, Write};
-use std::path::Path;
 use std::{error::Error, io::stdin, io::stdout};
 use walkdir::WalkDir;
 
@@ -43,7 +42,8 @@ fn from_stdin<I: BufRead, O: Write>(
 ) -> Result<(), Box<dyn Error>> {
     let lines = io.input.lines();
     for line in lines.enumerate() {
-        if let (linenumber, Ok(l)) = line {
+        if let (mut linenumber, Ok(l)) = line {
+            linenumber += 1;
             if let Some(output) = handle_line(&l, linenumber, &re, &args) {
                 write!(io.output, "{}", output).unwrap();
             }
@@ -80,30 +80,21 @@ fn from_files<O: Write>(args: Args, re: &Regex, writer: &mut O) -> Result<(), Bo
 
 fn handle_file<O: Write>(filename: &str, args: &Args, re: &Regex, writer: &mut O) {
     let mut found = false;
-    if let Ok(lines) = read_lines(filename) {
-        for line in lines.enumerate() {
-            if let (linenumber, Ok(l)) = line {
-                if let Some(output) = handle_line(&l, linenumber, &re, &args) {
-                    if found == false && args.names {
-                        writeln!(writer, "{}", filename.purple())
-                            .expect("ERROR: could not write to STDOUT");
-                        found = true;
-                    }
-                    write!(writer, "{}", output).unwrap();
+    let file = File::open(filename).expect("ERROR, file cannot be opened");
+    let lines = io::BufReader::new(file).lines();
+    for line in lines.enumerate() {
+        if let (mut linenumber, Ok(l)) = line {
+            linenumber += 1;
+            if let Some(output) = handle_line(&l, linenumber, &re, &args) {
+                if found == false && args.names {
+                    writeln!(writer, "{}", filename.purple())
+                        .expect("ERROR: could not write to STDOUT");
+                    found = true;
                 }
+                write!(writer, "{}", output).unwrap();
             }
         }
     }
-}
-
-// The output is wrapped in a Result to allow matching on errors
-// Returns an Iterator to the Reader of the lines of the file.
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 fn handle_line(line: &str, linenumber: usize, re: &Regex, args: &Args) -> Option<String> {
