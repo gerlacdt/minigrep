@@ -203,20 +203,21 @@ foo foo FOO",
                 insensitive: true,
                 query: "foo".to_string(),
                 filenames: vec![dirname.to_string()],
-                names: true,
+                names: false,
                 linenumber: false,
-                color: true,
+                color: false,
                 recursive: true,
             };
 
-            // let mut v = Vec::new();
-            // let _ = grep(args, &mut v);
-            let _ = grep(args, &mut stdout().lock());
+            let mut v = Vec::new();
+            let _ = grep(args, &mut v);
 
-            // let actual = String::from_utf8(v).expect("Not UTF-8");
+            // only use for checking manually
+            // let _ = grep(args, &mut stdout().lock());
 
-            // let expected = "foo bar\nbaz Foo\nfoo foo FOO\n\n";
-            // assert_eq!(expected, actual);
+            let actual = String::from_utf8(v).expect("Not UTF-8");
+            let expected = "foo bar\nbaz Foo\nfoo foo FOO\n\n";
+            assert_eq!(expected, actual);
         }
         Ok(())
     }
@@ -241,13 +242,18 @@ To an admiring bog!
                 insensitive: true,
                 query: "nobody".to_string(),
                 filenames: vec![filename.to_string()],
-                names: true,
+                names: false,
                 linenumber: true,
-                color: true,
+                color: false,
                 recursive: false,
             };
 
-            let _ = grep(args, &mut stdout().lock());
+            let mut v = Vec::new();
+            let _ = grep(args, &mut v);
+
+            let actual = String::from_utf8(v).expect("Not UTF-8");
+            let expected = "1:I'm nobody! Who are you?\n2:Are you nobody, too?\n\n";
+            assert_eq!(expected, actual);
 
             return Ok(());
         }
