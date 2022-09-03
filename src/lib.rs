@@ -242,7 +242,7 @@ To an admiring bog!
                 insensitive: true,
                 query: "nobody".to_string(),
                 filenames: vec![filename.to_string()],
-                names: false,
+                names: true,
                 linenumber: true,
                 color: false,
                 recursive: false,
@@ -252,7 +252,10 @@ To an admiring bog!
             let _ = grep(args, &mut v);
 
             let actual = String::from_utf8(v).expect("Not UTF-8");
-            let expected = "1:I'm nobody! Who are you?\n2:Are you nobody, too?\n\n";
+            let expected = format!(
+                "\u{1b}[35m{}\u{1b}[0m\n1:I'm nobody! Who are you?\n2:Are you nobody, too?\n\n",
+                filename
+            );
             assert_eq!(expected, actual);
 
             return Ok(());
