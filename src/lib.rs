@@ -353,8 +353,8 @@ foo baz",
             insensitive: false,
             linenumber: true,
             color: false,
-            expected: "0:foo bar
-3:foo baz
+            expected: "1:foo bar
+4:foo baz
 "
             .to_string(),
         });
@@ -375,4 +375,35 @@ foo baz",
         });
         v
     }
+
+    // fn fib(n: i32) -> i32 {
+    //     if n == 0 {
+    //         return 0;
+    //     } else if n == 1 {
+    //         return 1;
+    //     }
+    //     fib(n - 1) + fib(n - 2)
+    // }
+
+    // macro_rules! fib_tests {
+    //     ($($name:ident: $value:expr,)*) => {
+    //         $(
+    //             #[test]
+    //             fn $name() {
+    //                 let (input, expected) = $value;
+    //                 assert_eq!(expected, fib(input));
+    //             }
+    //         )*
+    //     }
+    // }
+
+    // fib_tests! {
+    //     fib_0: (0, 0),
+    //     fib_1: (1, 1),
+    //     fib_2: (2, 1),
+    //     fib_3: (3, 2),
+    //     fib_4: (4, 3),
+    //     fib_5: (5, 5),
+    //     fib_6: (6, 8),
+    // }
 }
